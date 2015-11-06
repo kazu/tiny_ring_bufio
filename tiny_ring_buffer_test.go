@@ -49,15 +49,21 @@ func TestWriteAt(t *testing.T) {
 	outfile, _ := os.Create("outtest")
 
 	bufio := NewTinyRBuff(4096*2, 20)
+	bufio.ReadMax = 4096 * 2
 	_, e := bufio.ReadAtLeast(file, 20)
+	fmt.Println("after read bufio", bufio.p())
 
 	if e != nil && bufio.UnCheckedSeqLen() < 1 {
 		t.Error("ReadAtLeast", e, bufio.UnCheckedSeqLen())
 	}
 	bufio.Check(bufio.UnCheckedSeqLen())
+	fmt.Println("after check bufio", bufio.p())
 
 	written, _ := bufio.WriteAt(outfile, 0)
 	fmt.Println("bufio written", bufio.p(), written)
+	fmt.Println("UnCeckedLne()", bufio.UnCheckedLen())
+	bufio.Check(bufio.UnCheckedLen())
+	fmt.Println("recheck bufio ", bufio.p())
 	outfile.Close()
 
 	file, _ = os.Open("outtest")

@@ -18,11 +18,12 @@ type TinyRBuff struct {
 	min     int
 	OutHead int
 	DupSize int
+	ReadMax int
 }
 
 func (t *TinyRBuff) p() string {
-	return fmt.Sprintf("<Head:%d, Tail:%d, Checked:%d, min: %d, OutHead: %d, DupSize: %d>",
-		t.Head, t.Tail, t.Checked, t.min, t.OutHead, t.DupSize)
+	return fmt.Sprintf("<Head:%d, Tail:%d, Checked:%d, min: %d, OutHead: %d, DupSize: %d ReadMax: %d>",
+		t.Head, t.Tail, t.Checked, t.min, t.OutHead, t.DupSize, t.ReadMax)
 }
 
 func New(size int, min int) *TinyRBuff {
@@ -30,8 +31,9 @@ func New(size int, min int) *TinyRBuff {
 }
 func NewTinyRBuff(size int, min int) *TinyRBuff {
 	return &TinyRBuff{
-		Buf: make([]byte, size),
-		min: min,
+		Buf:     make([]byte, size),
+		min:     min,
+		ReadMax: 4096,
 	}
 }
 
@@ -51,6 +53,9 @@ func (t *TinyRBuff) ReadAtLeast(r io.Reader, must int) (size int, err error) {
 		return 0, nil
 	} else {
 		end = len(t.Buf) - t.min
+	}
+	if end-t.Head > t.ReadMax {
+		end = t.Head + t.ReadMax
 	}
 	size, err = io.ReadAtLeast(r, t.Buf[t.Head:end], must)
 	t.Head += size
@@ -107,7 +112,7 @@ func (t *TinyRBuff) WriteAt(w io.WriterAt, size int) (w_len int, err error) {
 
 func (t *TinyRBuff) UnCheckedSeqLen() int {
 	check_tail := func(size int) int {
-		if t.Tail < t.min {
+		if t.Tail < t.min && t.OutHead > 0 {
 			return size - 1
 		}
 		return size
@@ -129,11 +134,11 @@ func (t *TinyRBuff) UnCheckedSeqLen() int {
 	return 0
 }
 func (t *TinyRBuff) UnCheckedLen() int {
-	if t.Tail < t.min {
+	if t.Tail < t.min && t.OutHead > 0 {
 		return t.UnCheckedSeqLen()
 	}
 	if t.Checked < t.OutHead {
-		return t.OutHead + t.Checked - t.DupSize + t.Head
+		return t.OutHead - t.Checked - t.DupSize + t.Head
 	}
 	if t.Head > t.Checked {
 		return t.Head - t.Checked
@@ -156,9 +161,10 @@ func (t *TinyRBuff) AllLen() int {
 func (t *TinyRBuff) Check(size int) []byte {
 	old_check := t.Checked
 	t.Checked += size
-	if t.Checked == t.OutHead {
+	fmt.Println(t.p())
+	if t.Checked >= t.OutHead {
+		t.Checked = t.Checked - t.OutHead + t.DupSize
 		t.OutHead = 0
-		t.Checked = t.DupSize
 	}
 	return t.Buf[old_check : old_check+size]
 }
