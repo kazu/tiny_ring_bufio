@@ -13,4 +13,4 @@ data := bufio.Check(bufio.UnCheckedSeqLen()) // get data as []byte
 
 fmt.Println("dump bufio withouf buffer data", bufio.p())
 
-```go
+```
