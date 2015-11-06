@@ -43,5 +43,29 @@ func TestReadAtLeast(t *testing.T) {
 	fmt.Println("unchecked seq len", bufio.UnCheckedSeqLen(), bufio.UnCheckedLen())
 
 }
+func TestWriteAt(t *testing.T) {
+	CreateFile(4000)
+	file, _ := os.Open("trbtest")
+	outfile, _ := os.Create("outtest")
 
-//func Test
+	bufio := NewTinyRBuff(4096*2, 20)
+	_, e := bufio.ReadAtLeast(file, 20)
+
+	if e != nil && bufio.UnCheckedSeqLen() < 1 {
+		t.Error("ReadAtLeast", e, bufio.UnCheckedSeqLen())
+	}
+	bufio.Check(bufio.UnCheckedSeqLen())
+
+	written, _ := bufio.WriteAt(outfile, 0)
+	fmt.Println("bufio written", bufio.p(), written)
+	outfile.Close()
+
+	file, _ = os.Open("outtest")
+	data := make([]byte, 30)
+	file.Read(data[0:30])
+
+	if data[20] != ([]byte)("1")[0] {
+		t.Error("data[3] != ", ([]byte)("4"))
+	}
+	file.Close()
+}
