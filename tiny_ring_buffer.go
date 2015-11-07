@@ -188,10 +188,8 @@ func (t *TinyRBuff) Check(size int) []byte {
 
 	old_check := t.Checked
 	t.Checked += size
-	//	fmt.Println(t.p())
 	if t.Checked >= t.OutHead {
 		t.Checked = t.Checked - t.OutHead
-		//t.OutHead = 0
 	}
 	return t.Buf[old_check : old_check+size]
 }
