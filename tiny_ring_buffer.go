@@ -21,6 +21,9 @@ type TinyRBuff struct {
 	ReadMax int
 }
 
+func (t *TinyRBuff) P() string {
+	return t.p()
+}
 func (t *TinyRBuff) p() string {
 	return fmt.Sprintf("<Head:%d, Tail:%d, Checked:%d, min: %d, OutHead: %d, DupSize: %d ReadMax: %d>",
 		t.Head, t.Tail, t.Checked, t.min, t.OutHead, t.DupSize, t.ReadMax)
@@ -164,7 +167,7 @@ func (t *TinyRBuff) SeqMin() int {
 func (t *TinyRBuff) Check(size int) []byte {
 	old_check := t.Checked
 	t.Checked += size
-	fmt.Println(t.p())
+	//	fmt.Println(t.p())
 	if t.Checked >= t.OutHead {
 		t.Checked = t.Checked - t.OutHead + t.DupSize
 		t.OutHead = 0
