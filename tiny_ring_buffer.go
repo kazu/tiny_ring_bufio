@@ -50,6 +50,9 @@ func (t *TinyRBuff) Len() int {
 func (t *TinyRBuff) ReadAtLeast(r io.Reader, must int) (size int, err error) {
 	//check me: should use readv ?
 	end := 0
+	defer func() {
+		fmt.Println("bufio.ReadAtLeast, must, return size, len(buf) ", must, size, len(t.Buf), t.P())
+	}()
 	if t.Head < t.Tail {
 		end = t.Tail
 	} else if t.Head > t.Tail && t.OutHead > 0 {
@@ -65,6 +68,7 @@ func (t *TinyRBuff) ReadAtLeast(r io.Reader, must int) (size int, err error) {
 	if t.Head >= len(t.Buf)-t.min {
 		t.OutHead = t.Head
 		t.Head = len(t.Buf) - t.Head
+		t.DupSize = len(t.Buf) - t.OutHead
 	}
 	return size, err
 }
@@ -84,18 +88,28 @@ func (t *TinyRBuff) Use() []byte {
 	return t.Buf[0:0]
 }
 
-func (t *TinyRBuff) WriteAt(w io.WriterAt, size int) (w_len int, err error) {
+func (t *TinyRBuff) WriteAt(w io.WriterAt, off int) (w_len int, err error) {
 	//check me: should use writev
+
+	defer func() {
+		fmt.Println("bufio.Write, off ", off, t.P())
+	}()
+
 	if t.Tail <= t.Checked {
-		w_len, err = w.WriteAt(t.Buf[t.Tail:t.Checked], int64(size))
+		w_len, err = w.WriteAt(t.Buf[t.Tail:t.Checked], int64(off))
 		t.Tail += w_len
-		size += w_len
+		off += w_len
 		return w_len, err
 	}
-	if t.Tail < t.OutHead {
-		w_len, err = w.WriteAt(t.Buf[t.Tail:t.OutHead], int64(t.OutHead-t.Tail))
+	if t.Tail < t.OutHead || t.DupSize > 0 {
+		out_head := t.OutHead
+		if out_head == 0 && t.DupSize > 0 {
+			out_head = len(t.Buf) - t.DupSize
+		}
+
+		w_len, err = w.WriteAt(t.Buf[t.Tail:out_head], int64(off))
 		t.Tail += w_len
-		if t.Tail == t.OutHead {
+		if t.Tail == out_head {
 			t.Tail = t.DupSize
 			t.OutHead = 0
 			t.DupSize = 0
@@ -104,7 +118,7 @@ func (t *TinyRBuff) WriteAt(w io.WriterAt, size int) (w_len int, err error) {
 			return w_len, err
 		}
 		var out_len int
-		out_len, err = w.WriteAt(t.Buf[t.Tail:t.Checked], int64(size-w_len))
+		out_len, err = w.WriteAt(t.Buf[t.Tail:t.Checked], int64(off+w_len))
 		w_len += out_len
 		t.Tail += out_len
 
@@ -124,8 +138,8 @@ func (t *TinyRBuff) UnCheckedSeqLen() int {
 	if t.OutHead > t.Checked {
 		if t.OutHead-t.Checked < t.min {
 			if t.OutHead-t.Checked+t.Head > t.min {
-				copy(t.Buf[t.OutHead:t.Checked+t.min], t.Buf[0:t.Checked+t.min-t.OutHead])
-				t.DupSize = t.Checked + t.min - t.OutHead
+				copy(t.Buf[t.OutHead:t.Checked+t.min], t.Buf[t.DupSize:t.DupSize+t.Checked+t.min-t.OutHead])
+				t.DupSize = t.DupSize + t.Checked + t.min - t.OutHead
 				t.OutHead = t.Checked + t.min
 			}
 		}
@@ -165,6 +179,10 @@ func (t *TinyRBuff) SeqMin() int {
 	return t.min
 }
 func (t *TinyRBuff) Check(size int) []byte {
+	defer func() {
+		fmt.Println("bufio.Check, size ", size, t.P())
+	}()
+
 	old_check := t.Checked
 	t.Checked += size
 	//	fmt.Println(t.p())
