@@ -158,6 +158,9 @@ func (t *TinyRBuff) AllLen() int {
 
 }
 
+func (t *TinyRBuff) SeqMin() int {
+	return t.min
+}
 func (t *TinyRBuff) Check(size int) []byte {
 	old_check := t.Checked
 	t.Checked += size
