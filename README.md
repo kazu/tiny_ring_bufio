@@ -16,3 +16,8 @@ data := bufio.Check(bufio.UnCheckedSeqLen()) // get data as []byte
 fmt.Println("dump bufio withouf buffer data", bufio.p())
 
 ```
+
+
+# Contributing
+
+Bug reports and pull requests are welcome on GitHub at  https://github.com/kazu/tiny_ring_bufio
