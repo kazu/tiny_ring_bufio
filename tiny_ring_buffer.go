@@ -63,6 +63,9 @@ func (t *TinyRBuff) ReadAtLeast(r io.Reader, must int) (size int, err error) {
 	if end-t.Head > t.ReadMax {
 		end = t.Head + t.ReadMax
 	}
+	if end-t.Head < must {
+		must = end - t.Head
+	}
 	size, err = io.ReadAtLeast(r, t.Buf[t.Head:end], must)
 	t.Head += size
 	if t.Head >= len(t.Buf)-t.min {
