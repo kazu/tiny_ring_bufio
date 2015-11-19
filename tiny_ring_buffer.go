@@ -139,7 +139,7 @@ func (t *TinyRBuff) UnCheckedSeqLen() int {
 		return check_tail(t.Head - t.Checked)
 	} else if t.OutHead > t.Checked {
 		if t.OutHead-t.Checked < t.min {
-			if t.OutHead-t.Checked+t.Head > t.min {
+			if t.OutHead-t.Checked+t.Head >= t.min {
 				copy(t.Buf[t.OutHead:t.Checked+t.min], t.Buf[0:t.Checked+t.min-t.OutHead])
 				t.DupSize = t.Checked + t.min - t.OutHead
 				t.OutHead = len(t.Buf) - t.min
