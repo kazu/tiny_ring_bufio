@@ -208,8 +208,12 @@ func (t *TinyRBuff) Checkv(size int) {
 		return
 	}
 	diff := t.OutHead - t.Checked
-	t.Check(diff)
-	t.Check(size - diff)
+	if diff >= size {
+		t.Check(size)
+	} else {
+		t.Check(diff)
+		t.Check(size - diff)
+	}
 	return
 }
 

@@ -161,6 +161,24 @@ func TestOverCheck(t *testing.T) {
 	}
 
 }
+
+func TestCheckUnderOverhead(t *testing.T) {
+	CreateFile(4000)
+
+	bufio := NewTinyRBuff(4096*2, 20)
+	bufio.ReadMax = 4096
+	bufio.Head = 0
+	bufio.Tail = 7603
+	bufio.OutHead = 8172
+	bufio.DupSize = 0
+	bufio.Checked = 8034
+
+	old := bufio.UnCheckedLen()
+	if bufio.Checkv(117); old != bufio.UnCheckedLen()+117 {
+		t.Error("t.CheckUnderOverhead orver bufi.Checkv ", old, bufio.UnCheckedLen())
+	}
+}
+
 func TestFill(t *testing.T) {
 	CreateFile(4000)
 	file, _ := os.Open("trbtest")
