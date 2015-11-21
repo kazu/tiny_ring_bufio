@@ -118,6 +118,21 @@ func TestResetCheck(t *testing.T) {
 	}
 
 }
+func TestOutRange(t *testing.T) {
+	CreateFile(4000)
+
+	bufio := NewTinyRBuff(4096*2, 20)
+	bufio.ReadMax = 4096
+	bufio.Head = 7144
+	bufio.Tail = 6870
+	bufio.OutHead = 0
+	bufio.DupSize = 0
+	bufio.Checked = 7027
+
+	bufio.UnCheckedLen()
+	bufio.Checkv(117)
+
+}
 
 func TestOverCheck(t *testing.T) {
 	CreateFile(4000)

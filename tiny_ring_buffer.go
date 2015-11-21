@@ -194,6 +194,11 @@ func (t *TinyRBuff) Check(size int) []byte {
 	if t.Checked >= t.OutHead {
 		t.Checked = t.Checked - t.OutHead
 	}
+	if old_check > len(t.Buf) || old_check+size > len(t.Buf) {
+		fmt.Printf("WARN: bufio overrun buf_len=%d offset=%d size=%d", len(t.Buf), old_check, size)
+		old_check = len(t.Buf) - size
+	}
+
 	return t.Buf[old_check : old_check+size]
 }
 
