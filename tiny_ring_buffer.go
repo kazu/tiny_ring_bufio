@@ -267,7 +267,8 @@ func (t *TinyRBuff) Check(size int) []byte {
 
 func (t *TinyRBuff) Checkv(size int) {
 	if t.Checked < t.Head {
-		t.Check(int(t.Head - t.Checked))
+		//t.Check(int(t.Head - t.Checked))
+		t.Check(size)
 		return
 	}
 	diff := t.OutHead - t.Checked
