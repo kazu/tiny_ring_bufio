@@ -88,14 +88,26 @@ RETRY:
 }
 func (t *TinyRBuff) Use() []byte {
 	if t.Tail < t.Checked {
-		old_tail := t.Tail
-		t.Tail = t.Checked
+		var old_tail uint64
+		for {
+			old_tail = t.Tail
+			if atomic.CompareAndSwapUint64(&t.Tail, t.Tail, t.Checked) {
+				break
+			}
+		}
+		//t.Tail = t.Checked
 		return t.Buf[old_tail:t.Checked]
 	}
 	if t.Tail < t.OutHead {
-		old_tail := t.Tail
-		out_head := t.OutHead
-		t.Tail = out_head
+		var old_tail, out_head uint64
+		for {
+			old_tail = t.Tail
+			out_head = t.OutHead
+			t.Tail = out_head
+			if atomic.CompareAndSwapUint64(&t.Tail, t.Tail, out_head) {
+				break
+			}
+		}
 		t.OutHead = 0
 		return t.Buf[old_tail:out_head]
 	}
@@ -112,14 +124,25 @@ func (t *TinyRBuff) WriteAt(w io.WriterAt, off int) (w_len int, err error) {
 
 	if t.Tail <= t.Checked {
 		w_len, err = w.WriteAt(t.Buf[int(t.Tail):int(t.Checked)], int64(off))
-		t.Tail += uint64(w_len)
+		for {
+			if atomic.CompareAndSwapUint64(&t.Tail, t.Tail, t.Tail+uint64(w_len)) {
+				break
+			}
+			//t.Tail += uint64(w_len)
+		}
 		off += w_len
 		return w_len, err
 	}
 	if t.Tail < t.OutHead {
 
 		w_len, err = w.WriteAt(t.Buf[t.Tail:t.OutHead], int64(off))
-		t.Tail += uint64(w_len)
+		for {
+			if atomic.CompareAndSwapUint64(&t.Tail, t.Tail, t.Tail+uint64(w_len)) {
+				break
+			}
+			//t.Tail += uint64(w_len)
+		}
+		//t.Tail += uint64(w_len)
 		if t.Tail == t.OutHead {
 			t.Tail = 0
 			t.OutHead = 0
@@ -131,7 +154,14 @@ func (t *TinyRBuff) WriteAt(w io.WriterAt, off int) (w_len int, err error) {
 		var out_len int
 		out_len, err = w.WriteAt(t.Buf[t.Tail:t.Checked], int64(off+w_len))
 		w_len += out_len
-		t.Tail += uint64(out_len)
+		for {
+			if atomic.CompareAndSwapUint64(&t.Tail, t.Tail, t.Tail+uint64(out_len)) {
+				break
+			}
+			//t.Tail += uint64(w_len)
+		}
+		//w_len += out_len
+		//t.Tail += uint64(out_len)
 
 		return w_len, err
 	}
@@ -153,8 +183,15 @@ func (t *TinyRBuff) UnCheckedSeqLen() int {
 		if t.OutHead-t.Checked < t.min {
 			if t.OutHead-t.Checked+t.Head >= t.min {
 				copy(t.Buf[t.OutHead:t.Checked+t.min], t.Buf[0:t.Checked+t.min-t.OutHead])
-				t.DupSize = t.Checked + t.min - t.OutHead
-				t.OutHead = uint64(len(t.Buf)) - t.min
+				for {
+					if atomic.CompareAndSwapUint64(&t.DupSize, t.DupSize, t.Checked+t.min-t.OutHead) {
+						if atomic.CompareAndSwapUint64(&t.OutHead, t.OutHead, uint64(len(t.Buf))-t.min) {
+							break
+						}
+					}
+				}
+				//t.DupSize = t.Checked + t.min - t.OutHead
+				//t.OutHead = uint64(len(t.Buf)) - t.min
 			}
 		}
 		return check_tail(t.OutHead - t.Checked + t.DupSize)
@@ -201,10 +238,24 @@ func (t *TinyRBuff) Check(size int) []byte {
 		//		fmt.Println("bufio.Check, size ", size, t.P())
 	}()
 
-	old_check := t.Checked
-	t.Checked += uint64(size)
+	var old_check uint64
+	for {
+		old_check = t.Checked
+		if atomic.CompareAndSwapUint64(&t.Checked, t.Checked, t.Checked+uint64(size)) {
+			break
+		}
+		//t.Checked += uint64(size)
+
+	}
+	//old_check := t.Checked
+	//t.Checked += uint64(size)
 	if t.Checked >= t.OutHead {
-		t.Checked = t.Checked - t.OutHead
+		for {
+			if atomic.CompareAndSwapUint64(&t.Checked, t.Checked, t.Checked-t.OutHead) {
+				break
+			}
+		}
+		//t.Checked = t.Checked - t.OutHead
 	}
 	if old_check > uint64(len(t.Buf)) || old_check+uint64(size) > uint64(len(t.Buf)) {
 		fmt.Printf("WARN: bufio overrun buf_len=%d offset=%d size=%d", len(t.Buf), old_check, size)
