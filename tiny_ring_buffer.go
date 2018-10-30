@@ -288,8 +288,21 @@ func (t *TinyRBuff) HasCheckedBuf() bool {
 	return false
 }
 func (t *TinyRBuff) CheckedBuf() []byte {
-	return t.Buf[t.Tail:t.Checked]
+	if t.Tail > t.Checked {
+		return t.Buf[t.Tail:t.OutHead]
+	} else {
+		return t.Buf[t.Tail:t.Checked]
+	}
 }
+
+func (t *TinyRBuff) CheckedBufs() ([]byte, []byte) {
+	if t.Tail > t.Checked {
+		return t.Buf[t.Tail:t.OutHead], t.Buf[t.DupSize:t.Checked]
+	} else {
+		return t.Buf[t.Tail:t.Checked], nil
+	}
+}
+
 func (t *TinyRBuff) CheckedLen() int {
 	return int(t.Checked - t.Tail)
 }
