@@ -6,6 +6,8 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -23,6 +25,18 @@ type TinyRBuff struct {
 	ReadMax uint64
 
 	MuR sync.Mutex
+}
+
+var logger *zap.Logger
+
+func Logger() *zap.Logger {
+	if logger == nil {
+		config := zap.NewDevelopmentConfig()
+		config.OutputPaths = []string{"stdout"}
+		logger, _ = config.Build()
+	}
+
+	return logger
 }
 
 func (t *TinyRBuff) P() string {
@@ -109,6 +123,7 @@ func (t *TinyRBuff) Use() []byte {
 			}
 		}
 		t.OutHead = 0
+		t.Tail = t.DupSize
 		return t.Buf[old_tail:out_head]
 	}
 	return t.Buf[0:0]
@@ -171,6 +186,10 @@ func (t *TinyRBuff) WriteAt(w io.WriterAt, off int) (w_len int, err error) {
 func (t *TinyRBuff) UnCheckedSeqLen() int {
 	check_tail := func(size uint64) int {
 		if size > 0 && t.Tail < t.min && t.OutHead > 0 {
+			//panic("donw fall this routine")
+			Logger().Warn("donw fall this routine",
+				zap.String("bufio", t.P()),
+			)
 			return int(size - uint64(1))
 		}
 		return int(size)
@@ -258,7 +277,11 @@ func (t *TinyRBuff) Check(size int) []byte {
 		//t.Checked = t.Checked - t.OutHead
 	}
 	if old_check > uint64(len(t.Buf)) || old_check+uint64(size) > uint64(len(t.Buf)) {
-		fmt.Printf("WARN: bufio overrun buf_len=%d offset=%d size=%d", len(t.Buf), old_check, size)
+		Logger().Warn("bufio ovrerun",
+			zap.Int("buf_len", len(t.Buf)),
+			zap.Uint64("offset", old_check),
+			zap.Int("size", size),
+		)
 		old_check = uint64(len(t.Buf) - size)
 	}
 

@@ -1,10 +1,14 @@
 package tiny_ring_bufio
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func CreateFile(size int) {
@@ -14,6 +18,46 @@ func CreateFile(size int) {
 		file.Write(([]byte)(strconv.Itoa(i)))
 	}
 	file.Close()
+}
+
+func BufFile(size int) io.Reader {
+
+	file := bytes.NewBuffer(nil)
+
+	for i := 0; i < size; i++ {
+		d := i % 10
+		file.Write(([]byte)(strconv.Itoa(d)))
+	}
+	return file
+}
+
+func TestReadAtLeast9000(t *testing.T) {
+
+	file := BufFile(90000)
+
+	bufio := NewTinyRBuff(4096*2, 2)
+	fmt.Printf("buf=%s\n", bufio.P())
+	file_n, e := bufio.ReadAtLeast(file, 2)
+
+	assert.NoError(t, e)
+	assert.True(t, file_n > 0)
+
+	bufio.Check(2)
+	bufio.Check(4000)
+	bufio.Use()
+
+	file_n, e = bufio.ReadAtLeast(file, 500)
+
+	fmt.Printf("buf=%s\n", bufio.P())
+	fmt.Printf("UnCheckedSeqLen=%d\n", bufio.UnCheckedSeqLen())
+	file_n, e = bufio.ReadAtLeast(file, 500)
+	bufio.Check(4188)
+	bufio.Use()
+	assert.Equal(t, bufio.Tail, uint64(0))
+
+	bufio.Check(500)
+	bufio.Use()
+	assert.NoError(t, e)
 }
 
 func TestReadAtLeast(t *testing.T) {
